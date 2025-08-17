@@ -135,3 +135,12 @@ add_executable(aggregate_tests
 target_include_directories(aggregate_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 add_test(NAME aggregate_unit COMMAND $<TARGET_FILE:aggregate_tests>)
 set_tests_properties(aggregate_unit PROPERTIES PASS_REGULAR_EXPRESSION "aggregate tests: OK")
+
+# ---- Unit tests: concurrency utilities ----
+add_executable(concurrency_tests
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/concurrency_tests.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/concurrency.cpp
+)
+target_include_directories(concurrency_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+add_test(NAME concurrency_unit COMMAND $<TARGET_FILE:concurrency_tests>)
+set_tests_properties(concurrency_unit PROPERTIES PASS_REGULAR_EXPRESSION "concurrency tests: OK")
