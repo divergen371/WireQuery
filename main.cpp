@@ -1143,7 +1143,7 @@ int main(int argc, char **argv)
             }
 
             // Extract response details
-            int  rcode = (int) ldns_pkt_get_rcode(pkt);
+            int  rcode = ldns_pkt_get_rcode(pkt);
             bool f_aa  = ldns_pkt_aa(pkt);
             bool f_tc  = ldns_pkt_tc(pkt);
             bool f_rd  = ldns_pkt_rd(pkt);
