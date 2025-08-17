@@ -146,3 +146,16 @@ add_executable(concurrency_tests
 target_include_directories(concurrency_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 add_test(NAME concurrency_unit COMMAND $<TARGET_FILE:concurrency_tests>)
 set_tests_properties(concurrency_unit PROPERTIES PASS_REGULAR_EXPRESSION "concurrency tests: OK")
+
+# ---- Unit tests: runner (strategy runners) ----
+add_executable(runner_tests
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/runner_tests.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/usecases/runner_posix.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/usecases/runner_rawdns.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/infra/posix_resolver.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/infra/rawdns_ldns.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/concurrency.cpp
+)
+target_include_directories(runner_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+add_test(NAME runner_unit COMMAND $<TARGET_FILE:runner_tests>)
+set_tests_properties(runner_unit PROPERTIES PASS_REGULAR_EXPRESSION "runner tests: OK")
