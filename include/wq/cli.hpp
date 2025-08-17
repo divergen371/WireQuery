@@ -2,9 +2,9 @@
 
 #include "wq/options.hpp"
 
-namespace wq {
+namespace wq
+{
+void print_usage(const char *prog);
 
-void print_usage(const char* prog);
-bool parse_args(int argc, char** argv, Options& opt);
-
+bool parse_args(int argc, char **argv, Options &opt);
 } // namespace wq

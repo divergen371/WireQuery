@@ -5,9 +5,10 @@
 
 #include "wq/options.hpp"
 
-namespace wq {
-
-enum class RawDnsErrorKind {
+namespace wq
+{
+enum class RawDnsErrorKind
+{
     None = 0,
     NotAvailable,
     InitFailed,
@@ -15,14 +16,15 @@ enum class RawDnsErrorKind {
     QueryFailed,
 };
 
-struct RawDnsResult {
+struct RawDnsResult
+{
     double ms{};
-    int rc{};                 // 0 on success, -1 on error
-    std::string error;        // error message when rc != 0
+    int rc{};          // 0 on success, -1 on error
+    std::string error; // error message when rc != 0
     RawDnsErrorKind kind{RawDnsErrorKind::None};
 
     // Success fields
-    int  rcode{};
+    int rcode{};
     bool f_aa{};
     bool f_tc{};
     bool f_rd{};
@@ -37,6 +39,5 @@ struct RawDnsResult {
 
 // Perform one raw DNS query using ldns when available.
 // When ldns is not available at build time, returns rc = -1 and kind = NotAvailable.
-RawDnsResult resolve_rawdns_once(const Options& opt);
-
+RawDnsResult resolve_rawdns_once(const Options &opt);
 } // namespace wq

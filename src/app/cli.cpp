@@ -14,8 +14,8 @@
 
 using namespace std::string_view_literals;
 
-namespace wq {
-
+namespace wq
+{
 void print_usage(const char *prog)
 {
     std::println("DNS resolver / timing tool");
@@ -266,7 +266,7 @@ bool parse_args(int argc, char **argv, Options &opt)
                 return false;
             }
             std::vector<int> out;
-            std::string      num;
+            std::string num;
             for (char ch: val)
             {
                 if (ch == ',')
@@ -464,5 +464,4 @@ bool parse_args(int argc, char **argv, Options &opt)
     if (opt.host.empty()) return false;
     return true;
 }
-
 } // namespace wq

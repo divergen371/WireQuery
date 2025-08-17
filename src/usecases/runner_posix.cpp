@@ -3,9 +3,10 @@
 #include "wq/resolver.hpp"
 #include "wq/concurrency.hpp"
 
-namespace wq {
-
-std::vector<double> run_posix_queries(const Options& opt, const TryCallback& on_try)
+namespace wq
+{
+std::vector<double> run_posix_queries(const Options &opt,
+                                      const TryCallback &on_try)
 {
     std::vector<double> times;
     times.assign(opt.tries, 0.0);
@@ -20,5 +21,4 @@ std::vector<double> run_posix_queries(const Options& opt, const TryCallback& on_
     for_each_index_batched(opt.tries, opt.concurrency, do_one);
     return times;
 }
-
 } // namespace wq

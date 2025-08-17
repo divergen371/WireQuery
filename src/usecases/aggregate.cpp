@@ -3,9 +3,10 @@
 #include <algorithm>
 #include <numeric>
 
-namespace wq {
-
-Aggregation aggregate_times(const std::vector<double>& times, const std::vector<int>& pctl)
+namespace wq
+{
+Aggregation aggregate_times(const std::vector<double> &times,
+                            const std::vector<int> &pctl)
 {
     Aggregation ag{};
     if (times.empty()) return ag;
@@ -21,8 +22,8 @@ Aggregation aggregate_times(const std::vector<double>& times, const std::vector<
     auto pct_value = [&](int p) -> double
     {
         if (sorted.empty()) return 0.0;
-        size_t n  = sorted.size();
-        int    pc = std::clamp(p, 0, 100);
+        size_t n = sorted.size();
+        int pc = std::clamp(p, 0, 100);
         size_t rank = (static_cast<size_t>(pc) * n + 100 - 1) / 100; // ceil
         if (rank < 1) rank = 1;
         if (rank > n) rank = n;
@@ -30,8 +31,7 @@ Aggregation aggregate_times(const std::vector<double>& times, const std::vector<
     };
 
     ag.percentiles.reserve(pctl.size());
-    for (int p : pctl) ag.percentiles.emplace_back(p, pct_value(p));
+    for (int p: pctl) ag.percentiles.emplace_back(p, pct_value(p));
     return ag;
 }
-
 } // namespace wq

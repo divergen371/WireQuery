@@ -9,9 +9,9 @@
 #include <ldns/ldns.h>
 #endif
 
-namespace wq {
-
-RawDnsResult resolve_rawdns_once(const Options& opt)
+namespace wq
+{
+RawDnsResult resolve_rawdns_once(const Options &opt)
 {
     RawDnsResult out{};
     auto t0 = std::chrono::steady_clock::now();
@@ -21,10 +21,11 @@ RawDnsResult resolve_rawdns_once(const Options& opt)
     out.ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
     out.rc = -1;
     out.kind = RawDnsErrorKind::NotAvailable;
-    out.error = "ldns not available: rebuild with ldns (pkg-config ldns) to enable raw DNS";
+    out.error =
+            "ldns not available: rebuild with ldns (pkg-config ldns) to enable raw DNS";
     return out;
 #else
-    ldns_resolver* res = nullptr;
+    ldns_resolver *res = nullptr;
     ldns_status st = LDNS_STATUS_OK;
 
     if (opt.ns.empty())
@@ -36,10 +37,12 @@ RawDnsResult resolve_rawdns_once(const Options& opt)
         res = ldns_resolver_new();
         if (res)
         {
-            ldns_rdf* ns_rdf = nullptr;
+            ldns_rdf *ns_rdf = nullptr;
             if (opt.ns.find(':') != std::string::npos)
             {
-                ns_rdf = ldns_rdf_new_frm_str(LDNS_RDF_TYPE_AAAA, opt.ns.c_str());
+                ns_rdf = ldns_rdf_new_frm_str(
+                    LDNS_RDF_TYPE_AAAA,
+                    opt.ns.c_str());
             }
             else
             {
@@ -47,7 +50,7 @@ RawDnsResult resolve_rawdns_once(const Options& opt)
             }
             if (ns_rdf)
             {
-                (void)ldns_resolver_push_nameserver(res, ns_rdf);
+                (void) ldns_resolver_push_nameserver(res, ns_rdf);
                 ldns_rdf_deep_free(ns_rdf);
             }
             else
@@ -88,7 +91,7 @@ RawDnsResult resolve_rawdns_once(const Options& opt)
     ldns_resolver_set_dnssec(res, opt.do_bit);
 
     // Build qname and type
-    ldns_rdf* name = ldns_dname_new_frm_str(opt.host.c_str());
+    ldns_rdf *name = ldns_dname_new_frm_str(opt.host.c_str());
     if (!name)
     {
         auto t1 = std::chrono::steady_clock::now();
@@ -103,7 +106,7 @@ RawDnsResult resolve_rawdns_once(const Options& opt)
     ldns_rr_type qtype = ldns_get_rr_type_by_name(opt.qtype.c_str());
     if (qtype == 0)
     {
-        static const std::pair<const char*, ldns_rr_type> kTypeMap[] = {
+        static const std::pair<const char *, ldns_rr_type> kTypeMap[] = {
             {"A", LDNS_RR_TYPE_A},
             {"AAAA", LDNS_RR_TYPE_AAAA},
             {"CNAME", LDNS_RR_TYPE_CNAME},
@@ -117,7 +120,7 @@ RawDnsResult resolve_rawdns_once(const Options& opt)
             {"DNSKEY", LDNS_RR_TYPE_DNSKEY},
             {"PTR", LDNS_RR_TYPE_PTR},
         };
-        for (const auto& kv : kTypeMap)
+        for (const auto &kv: kTypeMap)
         {
             if (opt.qtype == kv.first)
             {
@@ -128,10 +131,16 @@ RawDnsResult resolve_rawdns_once(const Options& opt)
         if (qtype == 0) qtype = LDNS_RR_TYPE_A;
     }
 
-    ldns_pkt* pkt = nullptr;
+    ldns_pkt *pkt = nullptr;
     uint16_t qflags = 0;
     if (opt.rd) qflags |= LDNS_RD;
-    st = ldns_resolver_query_status(&pkt, res, name, qtype, LDNS_RR_CLASS_IN, qflags);
+    st = ldns_resolver_query_status(
+        &pkt,
+        res,
+        name,
+        qtype,
+        LDNS_RR_CLASS_IN,
+        qflags);
 
     auto t1 = std::chrono::steady_clock::now();
     out.ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
@@ -156,9 +165,9 @@ RawDnsResult resolve_rawdns_once(const Options& opt)
     out.f_ad = ldns_pkt_ad(pkt);
     out.f_cd = ldns_pkt_cd(pkt);
 
-    ldns_rr_list* ans = ldns_pkt_answer(pkt);
-    ldns_rr_list* auth = ldns_pkt_authority(pkt);
-    ldns_rr_list* addl = ldns_pkt_additional(pkt);
+    ldns_rr_list *ans = ldns_pkt_answer(pkt);
+    ldns_rr_list *auth = ldns_pkt_authority(pkt);
+    ldns_rr_list *addl = ldns_pkt_additional(pkt);
     out.answer_count = ans ? ldns_rr_list_rr_count(ans) : 0;
     out.authority_count = auth ? ldns_rr_list_rr_count(auth) : 0;
     out.additional_count = addl ? ldns_rr_list_rr_count(addl) : 0;
@@ -167,8 +176,8 @@ RawDnsResult resolve_rawdns_once(const Options& opt)
     out.answers.reserve(out.answer_count);
     for (size_t i = 0; i < out.answer_count; ++i)
     {
-        ldns_rr* rr = ldns_rr_list_rr(ans, i);
-        if (char* s = ldns_rr2str(rr))
+        ldns_rr *rr = ldns_rr_list_rr(ans, i);
+        if (char *s = ldns_rr2str(rr))
         {
             out.answers.emplace_back(s);
             LDNS_FREE(s);
@@ -187,5 +196,4 @@ RawDnsResult resolve_rawdns_once(const Options& opt)
     return out;
 #endif
 }
-
 } // namespace wq
