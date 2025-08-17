@@ -125,3 +125,12 @@ add_executable(presentation_tests
 target_include_directories(presentation_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 add_test(NAME presentation_unit COMMAND $<TARGET_FILE:presentation_tests>)
 set_tests_properties(presentation_unit PROPERTIES PASS_REGULAR_EXPRESSION "presentation tests: OK")
+
+# ---- Unit tests: aggregate (usecases aggregation) ----
+add_executable(aggregate_tests
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/aggregate_tests.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/usecases/aggregate.cpp
+)
+target_include_directories(aggregate_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+add_test(NAME aggregate_unit COMMAND $<TARGET_FILE:aggregate_tests>)
+set_tests_properties(aggregate_unit PROPERTIES PASS_REGULAR_EXPRESSION "aggregate tests: OK")
