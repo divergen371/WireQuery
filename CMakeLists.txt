@@ -13,6 +13,7 @@ target_sources(WireQuery PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/app/cli.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/infra/posix_resolver.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/infra/rawdns_ldns.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/usecases/aggregate.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/usecases/run_queries.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/presentation/output_text.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/presentation/output_json.cpp
