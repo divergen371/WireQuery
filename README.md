@@ -11,6 +11,7 @@
 ## 主な機能
 
 - 複数回トライと計測（最小/平均/最大）
+- サブミリ秒精度の計測（単位: ms、小数3桁で出力）
 - 並列解決（`--concurrency` / `--parallel`）
 - アドレスファミリ/ソケット種別/プロトコル/サービス指定
 - オプションフラグ（`AI_ADDRCONFIG`/`AI_CANONNAME`/`AI_ALL`/`AI_V4MAPPED`/
@@ -20,12 +21,14 @@
 - JSON 集約出力（1ドキュメント）
 - NDJSON ストリーミング出力（試行ごと 1 行）
 - パーセンタイル統計（例: p50/p90/p99）
+- Raw DNS クエリ（`--type RR`）
 
 ## 必要環境
 
 - macOS（他 Unix 系でも移植容易）
 - C++23
 - 推奨コンパイラ: Homebrew LLVM clang++（`std::print` 利用のため）
+- 任意: ldns 1.8+ と OpenSSL（Raw DNS 機能を使う場合）
 
 ## ビルド
 
@@ -69,8 +72,14 @@ Options:
   --ni-namereqd      Use NI_NAMEREQD for reverse (require name)
   --json             Output results in JSON format
   --ndjson           Output each attempt as a single JSON line (NDJSON)
-  --pctl LIST        Comma-separated percentiles (e.g., 50,90,99)
+  --pctl LIST        Comma-separated percentiles for summary (e.g., 50,90,99)
   --dedup            Fold duplicate results per attempt
+  --type RR          Raw DNS mode (ldns): A,AAAA,CNAME,NS,MX,TXT,SOA,CAA,SRV,DS,DNSKEY,PTR
+  --ns SERVER        DNS server to query (IP or host)
+  --rd on|off        Recursion Desired flag (default: on)
+  --do on|off        DNSSEC DO flag (default: off)
+  --timeout MS       Query timeout in milliseconds (default: 2000)
+  --tcp              Force TCP transport (default: UDP with TCP fallback)
   -h, --help         Show this help
 ```
 
@@ -78,9 +87,9 @@ Options:
 
 ### テキスト
 
-- 各試行のアドレス一覧、PTR 結果、`try N: X ms - M address(es)`
-- 終了時に `summary: min=.. ms, avg=.. ms, max=.. ms (N tries)`
-- `--pctl` 指定時は `percentiles: p50=.., p90=.., ...` を追加
+- 各試行のアドレス一覧、PTR 結果、`try N: X.XXX ms - M address(es)`（ms は小数3桁）
+- 終了時に `summary: min=.. . . ms, avg=.. . . ms, max=.. . . ms (N tries)`（3桁固定）
+- `--pctl` 指定時は `percentiles: p50=.. . . , p90=.. . . , ...` を追加
 
 ### JSON（集約）
 
@@ -107,20 +116,20 @@ Options:
   "concurrency": 1,
   "dedup": false,
   "summary": {
-    "min_ms": 0,
-    "avg_ms": 0.0,
-    "max_ms": 0,
+    "min_ms": 0.395,
+    "avg_ms": 1.234,
+    "max_ms": 3.210,
     "count": 3
   },
   "percentiles": {
-    "p50": 0,
-    "p90": 1
+    "p50": 0.924,
+    "p90": 2.718
   },
   // --pctl 指定時のみ
   "attempts": [
     {
       "try": 1,
-      "ms": 0,
+      "ms": 0.395,
       "rc": 0,
       "canon": "localhost",
       // あれば
@@ -155,7 +164,7 @@ Options:
 ```json
 {
   "try": 1,
-  "ms": 12,
+  "ms": 12.345,
   "rc": 0,
   "canon": "localhost",
   "addresses": [
@@ -175,13 +184,33 @@ Options:
 ```json
 {
   "try": 2,
-  "ms": 5,
+  "ms": 5.000,
   "rc": -2,
   "error": "Name or service not known"
 }
 ```
 
 - NDJSON モードでは、ヘッダ表示や集約 JSON/テキストのサマリ出力は行いません。
+- ms は常に小数3桁で出力されます（例: 0.340, 12.000）。
+
+#### Raw DNS（NDJSON 抜粋）
+
+`--type RR` を指定すると Raw DNS 経路になり、NDJSON に `raw_dns` フィールドが追加されます（抜粋）。
+
+```json
+{
+  "try": 1,
+  "ms": 0.732,
+  "rc": 0,
+  "raw_dns": {
+    "type": "A",
+    "rcode": 0,
+    "flags": {"aa": false, "tc": false, "rd": true, "ra": true, "ad": false, "cd": false}
+  },
+  "counts": {"answer": 4, "authority": 0, "additional": 0},
+  "answers": ["example.com.  300 IN A 93.184.216.34", "..."]
+}
+```
 
 ## 例
 
@@ -203,6 +232,12 @@ Options:
 
 # サービス/ポート指定（80/TCP）
 ./wireq --service 80 --protocol tcp --tries 1 127.0.0.1
+
+# Raw DNS（A レコードを 8.8.8.8 に問い合わせ）
+./wireq --type A --ns 8.8.8.8 example.com
+
+# Raw DNS（TCP 強制 + DNSSEC DO + タイムアウト 1s）
+./wireq --type AAAA --tcp --do on --timeout 1000 --ns 1.1.1.1 example.com
 ```
 
 ## パーセンタイルの定義

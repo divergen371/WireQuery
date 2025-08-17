@@ -53,7 +53,7 @@ set_tests_properties(cli_help_noargs PROPERTIES PASS_REGULAR_EXPRESSION "Usage:"
 ## 1) Resolve localhost (text mode)
 add_test(NAME resolve_localhost_text
          COMMAND $<TARGET_FILE:untitled6> localhost --tries 1)
-set_tests_properties(resolve_localhost_text PROPERTIES PASS_REGULAR_EXPRESSION "try 1: [0-9]+ ms - [0-9]+ address")
+set_tests_properties(resolve_localhost_text PROPERTIES PASS_REGULAR_EXPRESSION "try 1: [0-9]+\\.[0-9][0-9][0-9] ms - [0-9]+ address\\(es\\)")
 
 ## 2) JSON output for localhost
 add_test(NAME resolve_localhost_json
@@ -73,7 +73,7 @@ set_tests_properties(concurrency_text PROPERTIES PASS_REGULAR_EXPRESSION "summar
 ## 5) Numeric host (no DNS)
 add_test(NAME numeric_host_ipv4
          COMMAND $<TARGET_FILE:untitled6> --numeric-host --tries 1 127.0.0.1)
-set_tests_properties(numeric_host_ipv4 PROPERTIES PASS_REGULAR_EXPRESSION "try 1: [0-9]+ ms - [0-9]+ address")
+set_tests_properties(numeric_host_ipv4 PROPERTIES PASS_REGULAR_EXPRESSION "try 1: [0-9]+\\.[0-9][0-9][0-9] ms - [0-9]+ address\\(es\\)")
 
 ## 6) Force IPv4 family with -4
 add_test(NAME family_ipv4_only
