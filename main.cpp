@@ -3,25 +3,25 @@
 //   /opt/homebrew/opt/llvm/bin/clang++ -std=c++23 -stdlib=libc++ \
 //     -I/opt/homebrew/opt/llvm/include/c++/v1 main.cpp -o main
 
-#include <print>     // std::print, std::println
+#include <algorithm>
 #include <chrono>
+#include <mutex>
+#include <numeric>
+#include <print>     // std::print, std::println
+#include <sstream>
 #include <string>
 #include <string_view>
-#include <vector>
-#include <numeric>
-#include <algorithm>
 #include <thread>
-#include <mutex>
 #include <unordered_set>
-#include <sstream>
+#include <vector>
 // noinspection CppUnusedIncludeDirective
 // NOLINTNEXTLINE
 #include <cstdio>
 // noinspection CppUnusedIncludeDirective
 // NOLINTNEXTLINE
 #include <cctype>
-#include <iomanip>
 #include <format>
+#include <iomanip>
 
 // POSIX networking
 #include <netdb.h>
@@ -123,11 +123,13 @@ static void print_usage(const char *prog)
 static const char *family_str(int af);
 
 
-[[maybe_unused]] static void reverse_lookup_list(addrinfo *res, bool namereqd)
+[[maybe_unused]] static void reverse_lookup_list(
+    const addrinfo *res,
+    const bool      namereqd)
 {
     char name[NI_MAXHOST]{};
     char ipbuf[INET6_ADDRSTRLEN]{};
-    for (addrinfo *ai = res; ai != nullptr; ai = ai->ai_next)
+    for (const addrinfo *ai = res; ai != nullptr; ai = ai->ai_next)
     {
         // Prepare numeric address for context
         std::string ip;
@@ -183,7 +185,7 @@ static const char *family_str(int af);
     }
 }
 
-static int family_to_af(Family f)
+static int family_to_af(const Family f)
 {
     switch (f)
     {
@@ -193,7 +195,7 @@ static int family_to_af(Family f)
     }
 }
 
-static const char *family_str(int af)
+static const char *family_str(const int af)
 {
     switch (af)
     {
@@ -203,7 +205,7 @@ static const char *family_str(int af)
     }
 }
 
-static const char *socktype_str(int st)
+static const char *socktype_str(const int st)
 {
     switch (st)
     {
@@ -255,12 +257,12 @@ struct AttemptResult
     std::vector<PtrItem> ptrs; // may be empty when reverse disabled
 };
 
-static std::vector<Entry> collect_entries(addrinfo *res, bool dedup)
+static std::vector<Entry> collect_entries(const addrinfo *res, bool dedup)
 {
     std::vector<Entry>              out;
     std::unordered_set<std::string> seen;
     char                            buf[INET6_ADDRSTRLEN]{};
-    for (addrinfo *ai = res; ai != nullptr; ai = ai->ai_next)
+    for (const addrinfo *ai = res; ai != nullptr; ai = ai->ai_next)
     {
         Entry e{};
         e.af       = ai->ai_family;
@@ -315,50 +317,63 @@ static std::vector<PtrItem> do_reverse_for_entries(
     std::vector<PtrItem>            out;
     std::unordered_set<std::string> seen; // key: af|ip
     char                            name[NI_MAXHOST]{};
-    for (const auto &e: entries)
+    for (const auto &[af, socktype, protocol, port, ip]: entries)
     {
-        std::string key = std::to_string(e.af) + '|' + e.ip;
-        if (!seen.insert(key).second) continue;
+        if (std::string key = std::to_string(af) + '|' + ip; !seen.insert(key).
+            second)
+            continue;
         PtrItem item{};
-        item.af = e.af;
-        item.ip = e.ip;
-        if (e.af == AF_INET)
+        item.af = af;
+        item.ip = ip;
+        if (af == AF_INET)
         {
             sockaddr_in sin{};
             sin.sin_family = AF_INET;
-            sin.sin_port   = htons(e.port);
-            inet_pton(AF_INET, e.ip.c_str(), &sin.sin_addr);
+            sin.sin_port   = htons(port);
+            inet_pton(AF_INET, ip.c_str(), &sin.sin_addr);
             int flags = NI_NOFQDN | (namereqd ? NI_NAMEREQD : 0);
-            int rc    = getnameinfo(
+            if (int rc = getnameinfo(
                 reinterpret_cast<sockaddr *>(&sin),
                 sizeof(sin),
                 name,
                 sizeof(name),
                 nullptr,
                 0,
-                flags);
-            item.rc = rc;
-            if (rc == 0) item.name = std::string{name};
-            else item.error        = gai_strerror(rc);
+                flags); rc == 0)
+            {
+                item.rc   = rc;
+                item.name = std::string{name};
+            }
+            else
+            {
+                item.rc    = rc;
+                item.error = gai_strerror(rc);
+            }
         }
-        else if (e.af == AF_INET6)
+        else if (af == AF_INET6)
         {
             sockaddr_in6 sin6{};
             sin6.sin6_family = AF_INET6;
-            sin6.sin6_port   = htons(e.port);
-            inet_pton(AF_INET6, e.ip.c_str(), &sin6.sin6_addr);
+            sin6.sin6_port   = htons(port);
+            inet_pton(AF_INET6, ip.c_str(), &sin6.sin6_addr);
             int flags = NI_NOFQDN | (namereqd ? NI_NAMEREQD : 0);
-            int rc    = getnameinfo(
+            if (int rc = getnameinfo(
                 reinterpret_cast<sockaddr *>(&sin6),
                 sizeof(sin6),
                 name,
                 sizeof(name),
                 nullptr,
                 0,
-                flags);
-            item.rc = rc;
-            if (rc == 0) item.name = std::string{name};
-            else item.error        = gai_strerror(rc);
+                flags); rc == 0)
+            {
+                item.rc   = rc;
+                item.name = std::string{name};
+            }
+            else
+            {
+                item.rc    = rc;
+                item.error = gai_strerror(rc);
+            }
         }
         out.push_back(std::move(item));
     }
@@ -369,21 +384,21 @@ static void print_entries(const std::vector<Entry> &entries)
 {
     for (const auto &e: entries)
     {
-        if (e.port)
+        if (const auto &[af, socktype, protocol, port, ip] = e; port)
             std::println(
                 "  - [{}] {}  socktype={}  proto={}  port={}",
-                family_str(e.af),
-                e.ip,
-                socktype_str(e.socktype),
-                proto_str(e.protocol),
-                e.port);
+                family_str(af),
+                ip,
+                socktype_str(socktype),
+                proto_str(protocol),
+                port);
         else
             std::println(
                 "  - [{}] {}  socktype={}  proto={}",
-                family_str(e.af),
-                e.ip,
-                socktype_str(e.socktype),
-                proto_str(e.protocol));
+                family_str(af),
+                ip,
+                socktype_str(socktype),
+                proto_str(protocol));
     }
 }
 
@@ -391,18 +406,18 @@ static void print_ptrs(const std::vector<PtrItem> &ptrs)
 {
     for (const auto &p: ptrs)
     {
-        if (p.rc == 0)
+        if (const auto &[af, ip, rc, name, error] = p; rc == 0)
             std::println(
                 "  PTR: [{}] {} -> {}",
-                family_str(p.af),
-                p.ip,
-                p.name);
+                family_str(af),
+                ip,
+                name);
         else
             std::println(
                 "  PTR: [{}] {} -> <{}>",
-                family_str(p.af),
-                p.ip,
-                p.error);
+                family_str(af),
+                ip,
+                error);
     }
 }
 
@@ -451,7 +466,7 @@ static bool parse_args(int argc, char **argv, Options &opt)
             print_usage(argv[0]);
             return false;
         }
-        else if (a == "-4"sv)
+        if (a == "-4"sv)
         {
             opt.family = Family::IPv4;
         }
@@ -589,13 +604,13 @@ static bool parse_args(int argc, char **argv, Options &opt)
             {
                 val = argv[++i];
             }
-            else if ((a.rfind("--concurrency", 0) == 0 && a.size() > 14 && a.
-                      substr(13, 1) == "="sv))
+            else if (a.rfind("--concurrency", 0) == 0 && a.size() > 14 && a.
+                     substr(13, 1) == "="sv)
             {
                 val = std::string(a.substr(14));
             }
-            else if ((a.rfind("--parallel", 0) == 0 && a.size() > 11 && a.
-                      substr(10, 1) == "="sv))
+            else if (a.rfind("--parallel", 0) == 0 && a.size() > 11 && a.
+                     substr(10, 1) == "="sv)
             {
                 val = std::string(a.substr(11));
             }
@@ -666,7 +681,7 @@ static bool parse_args(int argc, char **argv, Options &opt)
                         num.clear();
                     }
                 }
-                else if ((ch >= '0' && ch <= '9'))
+                else if (ch >= '0' && ch <= '9')
                 {
                     num.push_back(ch);
                 }
@@ -862,11 +877,11 @@ int main(int argc, char **argv)
         std::println("Resolving: {}", opt.host);
         std::println(
             "Family: {}  Tries: {}",
-            (opt.family == Family::Any
-                 ? "any"
-                 : opt.family == Family::IPv4
-                       ? "inet"
-                       : "inet6"),
+            opt.family == Family::Any
+                ? "any"
+                : opt.family == Family::IPv4
+                      ? "inet"
+                      : "inet6",
             opt.tries);
         std::println(
             "Flags: addrconfig={} canonname={} all={} v4mapped={} numeric-host={}",
@@ -1010,7 +1025,7 @@ int main(int argc, char **argv)
             {
                 struct timeval tv{
                     .tv_sec = opt.timeout_ms / 1000,
-                    .tv_usec = (opt.timeout_ms % 1000) * 1000
+                    .tv_usec = opt.timeout_ms % 1000 * 1000
                 };
                 ldns_resolver_set_timeout(res, tv);
             }
@@ -1080,11 +1095,11 @@ int main(int argc, char **argv)
                             {"DNSKEY", LDNS_RR_TYPE_DNSKEY},
                             {"PTR", LDNS_RR_TYPE_PTR},
                         };
-                for (const auto &kv: kTypeMap)
+                for (const auto &[type_name, type_code]: kTypeMap)
                 {
-                    if (opt.qtype == kv.first)
+                    if (opt.qtype == type_name)
                     {
-                        qtype = kv.second;
+                        qtype = type_code;
                         break;
                     }
                 }
@@ -1331,7 +1346,7 @@ int main(int argc, char **argv)
             ptrs = do_reverse_for_entries(
                 entries,
                 opt.ni_namereqd);
-        std::string canon = (res && res->ai_canonname)
+        std::string canon = res && res->ai_canonname
                                 ? std::string(res->ai_canonname)
                                 : std::string();
 
@@ -1348,15 +1363,16 @@ int main(int argc, char **argv)
             os << ",\"addresses\":[";
             for (size_t j = 0; j < entries.size(); ++j)
             {
-                const auto &e = entries[j];
+                const auto &[e_af, e_socktype, e_protocol, e_port, e_ip] =
+                        entries[j];
                 if (j) os << ",";
-                os << R"({"family":")" << json_escape(family_str(e.af))
-                        << R"(","ip":")" << json_escape(e.ip)
+                os << R"({"family":")" << json_escape(family_str(e_af))
+                        << R"(","ip":")" << json_escape(e_ip)
                         << R"(","socktype":")" << json_escape(
-                            socktype_str(e.socktype))
+                            socktype_str(e_socktype))
                         << R"(","protocol":")" << json_escape(
-                            proto_str(e.protocol))
-                        << R"(","port":)" << e.port << "}";
+                            proto_str(e_protocol))
+                        << R"(","port":)" << e_port << "}";
             }
             os << "]";
             if (!ptrs.empty())
@@ -1364,15 +1380,15 @@ int main(int argc, char **argv)
                 os << ",\"ptr\":[";
                 for (size_t k = 0; k < ptrs.size(); ++k)
                 {
-                    const auto &p = ptrs[k];
+                    const auto &[p_af, p_ip, p_rc, p_name, p_error] = ptrs[k];
                     if (k) os << ",";
-                    os << R"({"family":")" << json_escape(family_str(p.af))
-                            << R"(","ip":")" << json_escape(p.ip)
-                            << R"(","rc":)" << p.rc;
-                    if (p.rc == 0)
-                        os << R"(,"name":")" << json_escape(p.name)
+                    os << R"({"family":")" << json_escape(family_str(p_af))
+                            << R"(","ip":")" << json_escape(p_ip)
+                            << R"(","rc":)" << p_rc;
+                    if (p_rc == 0)
+                        os << R"(,"name":")" << json_escape(p_name)
                                 << "\"";
-                    else os << R"(,"error":")" << json_escape(p.error) << "\"";
+                    else os << R"(,"error":")" << json_escape(p_error) << "\"";
                     os << "}";
                 }
                 os << "]";
@@ -1503,46 +1519,50 @@ int main(int argc, char **argv)
             os << "\"attempts\":[";
             for (int i = 0; i < opt.tries; ++i)
             {
-                const auto &ar = attempts[i];
+                const auto &[amt_ms, amt_rc, amt_error, amt_canon, amt_entries,
+                    amt_ptrs] = attempts[i];
                 if (i) os << ",";
                 os << "{";
-                os << "\"try\":" << (i + 1) << ",\"ms\":" << ar.ms << ",\"rc\":"
-                        << ar.rc;
-                if (!ar.error.empty())
+                os << "\"try\":" << (i + 1) << ",\"ms\":" << amt_ms <<
+                        ",\"rc\":"
+                        << amt_rc;
+                if (!amt_error.empty())
                     os << R"(,"error":")" << json_escape(
-                        ar.error) << "\"";
-                if (!ar.canon.empty())
+                        amt_error) << "\"";
+                if (!amt_canon.empty())
                     os << R"(,"canon":")" << json_escape(
-                        ar.canon) << "\"";
+                        amt_canon) << "\"";
                 os << ",\"addresses\":[";
-                for (size_t j = 0; j < ar.entries.size(); ++j)
+                for (size_t j = 0; j < amt_entries.size(); ++j)
                 {
-                    const auto &e = ar.entries[j];
+                    const auto &[e_af, e_socktype, e_protocol, e_port, e_ip] =
+                            amt_entries[j];
                     if (j) os << ",";
-                    os << R"({"family":")" << json_escape(family_str(e.af)) <<
-                            R"(","ip":")" << json_escape(e.ip)
+                    os << R"({"family":")" << json_escape(family_str(e_af)) <<
+                            R"(","ip":")" << json_escape(e_ip)
                             << R"(","socktype":")" <<
-                            json_escape(socktype_str(e.socktype)) <<
+                            json_escape(socktype_str(e_socktype)) <<
                             R"(","protocol":")" << json_escape(
-                                proto_str(e.protocol))
-                            << R"(","port":)" << e.port << "}";
+                                proto_str(e_protocol))
+                            << R"(","port":)" << e_port << "}";
                 }
                 os << "]";
-                if (!ar.ptrs.empty())
+                if (!amt_ptrs.empty())
                 {
                     os << ",\"ptr\":[";
-                    for (size_t k = 0; k < ar.ptrs.size(); ++k)
+                    for (size_t k = 0; k < amt_ptrs.size(); ++k)
                     {
-                        const auto &p = ar.ptrs[k];
+                        const auto &[p_af, p_ip, p_rc, p_name, p_error] =
+                                amt_ptrs[k];
                         if (k) os << ",";
-                        os << R"({"family":")" << json_escape(family_str(p.af))
-                                << R"(","ip":")" << json_escape(p.ip)
-                                << R"(","rc":)" << p.rc;
-                        if (p.rc == 0)
+                        os << R"({"family":")" << json_escape(family_str(p_af))
+                                << R"(","ip":")" << json_escape(p_ip)
+                                << R"(","rc":)" << p_rc;
+                        if (p_rc == 0)
                             os << R"(,"name":")" << json_escape(
-                                p.name) << "\"";
+                                p_name) << "\"";
                         else
-                            os << R"(,"error":")" << json_escape(p.error) <<
+                            os << R"(,"error":")" << json_escape(p_error) <<
                                     "\"";
                         os << "}";
                     }
