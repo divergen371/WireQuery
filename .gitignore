@@ -1,0 +1,79 @@
+# ---- OS/macOS ----
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# ---- Editor/IDE ----
+.idea/
+*.iml
+.vscode/
+.clangd/
+.ccls-cache/
+.cache/
+
+# ---- C/C++ build artifacts ----
+# Objects / precompiled headers
+*.o
+*.lo
+*.obj
+*.gch
+*.pch
+
+# Static / shared libraries
+*.a
+*.la
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+
+# Executables
+*.exe
+*.out
+
+# ---- CMake / Ninja ----
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CMakeUserPresets.json
+
+# Ninja files
+build.ninja
+.ninja_log
+.ninja_deps
+
+# Common build directories
+/build/
+/build-*/
+/cmake-build-*/
+/build-tests/
+/build-tests-llvm/
+
+# CLion default build dirs (already covered by cmake-build-*)
+# /cmake-build-debug/
+# /cmake-build-debug-clang/
+
+# ---- Project local binaries (root builds) ----
+/wireq
+/untitled6
+/main
+
+# ---- Logs & temp ----
+*.log
+*.tmp
+*~
+*.swp
+*.swo
+
+# ---- Archives ----
+*.tar
+*.gz
+*.zip
