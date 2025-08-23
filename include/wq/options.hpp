@@ -28,6 +28,7 @@ struct Options
     bool dedup = false;        // fold duplicate results
     bool ndjson = false;       // NDJSON streaming per attempt
     std::vector<int> pctl;     // requested percentiles (0..100)
+    bool stop_on_error = false; // short-circuit remaining tries on error
     // Raw DNS (ldns) controls - Phase1
     std::string qtype;     // when non-empty, enable raw DNS path
     std::string ns;        // server IP/host (authoritative/recursive)

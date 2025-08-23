@@ -27,6 +27,8 @@ void print_usage(const char *prog)
         "  --concurrency K    Number of parallel lookups (default: 1)");
     std::println("  --parallel K       Alias of --concurrency");
     std::println(
+        "  --cancel-on-error  Short-circuit remaining tries when a try fails");
+    std::println(
         "  --family F         Address family: any|inet|inet6 (default: any)");
     std::println("  -4                 Shortcut for --family inet");
     std::println("  -6                 Shortcut for --family inet6");
@@ -76,7 +78,11 @@ bool parse_args(int argc, char **argv, Options &opt)
             print_usage(argv[0]);
             return false;
         }
-        if (a == "-4"sv)
+        else if (a == "--cancel-on-error"sv)
+        {
+            opt.stop_on_error = true;
+        }
+        else if (a == "-4"sv)
         {
             opt.family = Family::IPv4;
         }

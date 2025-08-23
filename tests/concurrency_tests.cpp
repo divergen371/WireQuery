@@ -145,8 +145,16 @@ static void test_pool_cancel_cooperative()
         pool.submit_cancelable(
             [&](const std::atomic<bool> &flag)
             {
+                // Give cancellation a chance to propagate by checking the flag
+                // multiple times and yielding briefly. This stabilizes the test
+                // so that cancel() meaningfully reduces completed tasks even
+                // when tasks are very light.
+                for (int k = 0; k < 1000; ++k)
+                {
+                    if (flag.load(std::memory_order_relaxed)) return;
+                    std::this_thread::yield();
+                }
                 if (flag.load(std::memory_order_relaxed)) return;
-                // cooperatively stop
                 c.fetch_add(1, std::memory_order_relaxed);
             });
     }

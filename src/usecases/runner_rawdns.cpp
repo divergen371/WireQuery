@@ -11,14 +11,27 @@ std::vector<double> run_rawdns_queries(const Options &opt,
     std::vector<double> times;
     times.assign(opt.tries, 0.0);
 
-    auto do_one = [&](int t)
+    Cancellation cancel;
+    auto do_one = [&](int t, const std::atomic<bool> &)
     {
         RawDnsResult rd = resolve_rawdns_once(opt);
         times[t - 1] = rd.ms;
-        if (on_try) on_try(t, rd.ms, nullptr, &rd);
+        if (on_try)
+        {
+            if (opt.stop_on_error)
+            {
+                on_try(t, rd.ms, nullptr, &rd);
+            }
+            else
+            {
+                try { on_try(t, rd.ms, nullptr, &rd); }
+                catch (...) { /* swallow to continue all tries */ }
+            }
+        }
     };
 
-    for_each_index_batched(opt.tries, opt.concurrency, do_one);
+    for_each_index_batched_cancelable(
+        opt.tries, opt.concurrency, do_one, &cancel);
     return times;
 }
 } // namespace wq

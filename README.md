@@ -21,6 +21,7 @@
 - JSON 集約出力（1ドキュメント）
 - NDJSON ストリーミング出力（試行ごと 1 行）
 - パーセンタイル統計（例: p50/p90/p99）
+- 協調的キャンセル（`--cancel-on-error` / `Options::stop_on_error`）
 - Raw DNS クエリ（`--type RR`）
 
 ## 必要環境
@@ -57,6 +58,7 @@ Options:
   --tries N          Number of resolution attempts (default: 3)
   --concurrency K    Number of parallel lookups (default: 1)
   --parallel K       Alias of --concurrency
+  --cancel-on-error  Short-circuit remaining tries when a try fails
   --family F         Address family: any|inet|inet6 (default: any)
   -4                 Shortcut for --family inet
   -6                 Shortcut for --family inet6
@@ -69,6 +71,7 @@ Options:
   --v4mapped         AI_V4MAPPED
   --numeric-host     AI_NUMERICHOST (no DNS query)
   --reverse          Do reverse (PTR) lookups for results
+  --ptr              Alias of --reverse
   --ni-namereqd      Use NI_NAMEREQD for reverse (require name)
   --json             Output results in JSON format
   --ndjson           Output each attempt as a single JSON line (NDJSON)
@@ -83,6 +86,13 @@ Options:
   -h, --help         Show this help
 ```
 
+### 補足: オプションの指定方法
+
+- __ロングオプションの指定__: `--opt value` と `--opt=value` の両方に対応しています（例: `--family inet6` または `--family=inet6`）。
+- __ブール値の指定__: `--rd` / `--do` は `on|off` に加えて `true|false` / `1|0` も受け付けます。
+- __境界値__: `--tries` と `--concurrency` は 1 未満が指定された場合に 1 に丸められます。
+- __Raw DNS の名前解決サーバ__: `--ns` を省略した場合、システムの名前解決設定（例: `/etc/resolv.conf`）に基づくネームサーバを使用します。
+
 ## 出力フォーマット
 
 ### テキスト
@@ -90,6 +100,7 @@ Options:
 - 各試行のアドレス一覧、PTR 結果、`try N: X.XXX ms - M address(es)`（ms は小数3桁）
 - 終了時に `summary: min=.. . . ms, avg=.. . . ms, max=.. . . ms (N tries)`（3桁固定）
 - `--pctl` 指定時は `percentiles: p50=.. . . , p90=.. . . , ...` を追加
+- Raw DNS モード（`--type` 指定）では、各試行で `raw DNS rcode=<code> aa=<..> tc=<..> rd=<..> ra=<..> ad=<..> cd=<..> an=<count>` を表示します。
 
 ### JSON（集約）
 
@@ -155,6 +166,8 @@ Options:
   ]
 }
 ```
+
+- 注意: Raw DNS の詳細フィールド（`rcode` や `answers` など）は集約 JSON には含まれません。Raw DNS の詳細は NDJSON モードで提供されます。
 
 ### NDJSON（ストリーミング）
 
@@ -238,7 +251,19 @@ Options:
 
 # Raw DNS（TCP 強制 + DNSSEC DO + タイムアウト 1s）
 ./wireq --type AAAA --tcp --do on --timeout 1000 --ns 1.1.1.1 example.com
+
+# 失敗時に残りトライを短絡キャンセル
+./wireq --cancel-on-error --tries 5 --concurrency 4 example.com
 ```
+
+## キャンセルと例外伝播
+
+- __`--cancel-on-error` / `Options::stop_on_error`__
+  - 有効時、各試行のコールバック（`on_try`）で例外が発生すると、その例外を最初の 1 件だけ伝播し、以降の試行を協調的にキャンセルします（"first exception wins"）。
+  - 無効時（デフォルト）、`on_try` 内の例外はランナー側で捕捉・抑止し、すべての試行を継続します。
+- __CLI の挙動__
+  - 標準の CLI 実装では `on_try` は例外を投げない設計のため、通常は `--cancel-on-error` を付けても出力の見た目は変わりません（エラーは rc とメッセージとして扱われます）。
+  - ライブラリとして組み込む場合や拡張で `on_try` が例外を投げうるときに、このフラグで短絡/継続の方針を切り替えられます。
 
 ## パーセンタイルの定義
 
